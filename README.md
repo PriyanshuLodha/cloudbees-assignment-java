@@ -5,5 +5,6 @@ The application allows users to purchase train tickets, view receipts, allocate 
 
 You can access the api's name from controller folder.
 
+The test cases file is present in src\test\java\com\example\test\service\TicketServiceTest.java 
 
 Author: Priyanshu Lodha
