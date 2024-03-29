@@ -5,7 +5,6 @@ import com.example.test.entity.Receipt;
 import com.example.test.entity.Ticket;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +16,8 @@ import java.util.List;
 @Getter
 @Setter
 public class TicketService {
-    @Autowired
     List<Ticket> ticketList=new ArrayList<>();
-
     Integer count=0;
-
     public ApiResponse issueTicket(Ticket ticket){
         if(ticket.getUser()==null){
             return new ApiResponse(HttpStatus.INTERNAL_SERVER_ERROR,"E-01","User name should not be null");
@@ -57,9 +53,6 @@ public class TicketService {
     }
 
     public ApiResponse getUsersFromSection(String section){
-//        if(section!="A"||section!="B"){
-//            return new ApiResponse(HttpStatus.INTERNAL_SERVER_ERROR,"E-04","Please enter valid section");
-//        }
         System.out.println(section);
         if(section.equals("A")||section.equals("B")){
             List<Ticket> userSectionList=new ArrayList<>();
@@ -110,4 +103,5 @@ public class TicketService {
          return new ApiResponse(HttpStatus.OK,"Ticket modified successfully",modifiedTicket);
         }
     }
+
 }
