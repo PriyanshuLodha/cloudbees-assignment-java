@@ -1,5 +1,6 @@
 package com.example.test.service;
 
+import com.example.test.entity.ApiResponse;
 import com.example.test.entity.Receipt;
 import com.example.test.entity.Ticket;
 import com.example.test.entity.User;
@@ -7,116 +8,108 @@ import com.example.test.services.TicketService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.InjectMocks;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.http.HttpStatus;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TicketServiceTest {
-
     @InjectMocks
     private TicketService ticketService;
 
-    private List<Ticket> ticketList;
-
-    @Before
-    public void setUp() {
-        ticketList = new ArrayList<>();
-    }
-
     @Test
-    public void testIssueTicket_TicketIssuedSuccessfully() {
-        Ticket ticket = new Ticket();
-        ticket.setFrom("London");
-        ticket.setTo("France");
-        User user = new User();
-        user.setFirstName("John");
-        ticket.setUser(user);
-        String result = ticketService.issueTicket(ticket);
-        assertEquals("Ticked issued successfully!!!", result);
+    public void testIssueTicket_ValidTicket() {
+        Ticket ticket = new Ticket("New York", "London", new User("John"), "$50", "A");
+        ApiResponse response = ticketService.issueTicket(ticket);
 
-    }
-
-    @Test
-    public void testIssueTicket_UserAlreadyPurchasedTicket() {
-        Ticket existingTicket = new Ticket();
-        existingTicket.setFrom("London");
-        existingTicket.setTo("France");
-        User existingUser = new User();
-        existingUser.setFirstName("John");
-        existingTicket.setUser(existingUser);
-
-        Ticket ticket = new Ticket();
-        ticket.setFrom("London");
-        ticket.setTo("France");
-        User user = new User();
-        user.setFirstName("John");
-        ticket.setUser(user);
-
-        ticketList.add(existingTicket);
-
-        String result = ticketService.issueTicket(ticket);
-
-        assertEquals("Ticked issued successfully!!!", result);
-        assertFalse(ticketList.contains(ticket));
+        assertEquals(HttpStatus.OK, response.getCode());
+        assertEquals("User added successfully", response.getMessage());
+        assertEquals(ticket, response.getResponse());
     }
     @Test
-    public void testRemoveUser_UserExistsInList() {
-        Ticket ticket1 = new Ticket();
-        User user1 = new User();
-        user1.setFirstName("John");
-        ticket1.setUser(user1);
+    public void testIssueTicket_NullUser() {
+        Ticket ticket = new Ticket("New York", "London", null, "$50", "A");
+        ApiResponse response = ticketService.issueTicket(ticket);
 
-        Ticket ticket2 = new Ticket();
-        User user2 = new User();
-        user2.setFirstName("Alice");
-        ticket2.setUser(user2);
-
-
-        ticketList.add(ticket1);
-        ticketList.add(ticket2);
-
-        int result = ticketService.removeUser("John");
-
-        assertEquals(2, ticketList.size());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getCode());
+        assertEquals("E-01", response.getMessage());
+        assertEquals("User name should not be null", response.getResponse());
     }
     @Test
-    public void testRemoveUser_UserDoesNotExist() {
+    public void testGetReceipt_ValidUser() {
+        Ticket ticket = new Ticket("New York", "London", new User("Alice"), "$50", "A");
+        ticketService.issueTicket(ticket);
 
-        Ticket ticket1 = new Ticket();
-        User user1 = new User();
-        user1.setFirstName("John");
-        ticket1.setUser(user1);
+        ApiResponse response = ticketService.getReceipt("Alice");
 
-        Ticket ticket2 = new Ticket();
-        User user2 = new User();
-        user2.setFirstName("Alice");
-        ticket2.setUser(user2);
-
-
-        ticketList.add(ticket1);
-        ticketList.add(ticket2);
-
-        int result = ticketService.removeUser("Bob");
-
-        assertEquals(0, result);
-        assertEquals(2, ticketList.size());
+        assertEquals(HttpStatus.OK, response.getCode());
+        assertEquals("User Receipt", response.getMessage());
+        Receipt receipt = (Receipt) response.getResponse();
+        assertEquals(ticket.getFrom(), receipt.getFrom());
+        assertEquals(ticket.getTo(), receipt.getTo());
+        assertEquals(ticket.getUser().getFirstName(), receipt.getFirstName());
+        assertEquals(ticket.getSection(), receipt.getSection());
+        assertEquals(ticket.getPricePaid(), receipt.getPricePaid());
     }
-
     @Test
-    public void testModifyUserTicket_UserDoesNotExist() {
-        Ticket ticket = new Ticket();
-        ticket.setSection("A");
-        User user = new User();
-        user.setFirstName("Alice");
-        ticket.setUser(user);
-        ticketList.add(ticket);
-        Ticket modifiedTicket = ticketService.modifyUserTicket("Bob");
-        assertNull(modifiedTicket);
-    }
+    public void testGetReceipt_InvalidUser() {
+        ApiResponse response = ticketService.getReceipt("Bob");  // Non-existent user
 
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getCode());
+        assertEquals("E-03", response.getMessage());
+        assertEquals("Please enter valid username", response.getResponse());
+    }
+    @Test
+    public void testGetUsersFromSection_ValidSection() {
+        Ticket ticketA = new Ticket("New York", "London", new User("Alice"), "$50", "A");
+        Ticket ticketB = new Ticket("Paris", "Tokyo", new User("Bob"), "$70", "B");
+        ticketService.issueTicket(ticketA);
+        ticketService.issueTicket(ticketB);
+
+        ApiResponse responseA = ticketService.getUsersFromSection("A");
+        ApiResponse responseB = ticketService.getUsersFromSection("B");
+
+        assertEquals(HttpStatus.OK, responseA.getCode());
+        List<Ticket> ticketsA = (List<Ticket>) responseA.getResponse();
+        assertEquals(1, ticketsA.size()); // Only ticketA has section "A"
+        assertEquals(ticketA, ticketsA.get(0));
+
+        assertEquals(HttpStatus.OK, responseB.getCode());
+        List<Ticket> ticketsB = (List<Ticket>) responseB.getResponse();
+        assertEquals(1, ticketsB.size()); // Only ticketB has section "B"
+        assertEquals(ticketB, ticketsB.get(0));
+    }
+    @Test
+    public void testRemoveUser_ValidUser() {
+        Ticket ticket = new Ticket("New York", "London", new User("Charlie"), "$50", "A");
+        ticketService.issueTicket(ticket);
+
+        ApiResponse response = ticketService.removeUser("Charlie");
+
+        assertEquals(HttpStatus.OK, response.getCode());
+        assertEquals("removed", response.getMessage());
+        assertEquals("User removed successfully", response.getResponse());
+    }
+    @Test
+    public void testRemoveUser_InvalidUser() {
+        ApiResponse response = ticketService.removeUser("David");  // Non-existent user
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getCode());
+        assertEquals("E-03", response.getMessage());
+        assertEquals("Please enter valid user name", response.getResponse());
+    }
+    @Test
+    public void testModifyUserTicket_InvalidUser() {
+        ApiResponse response = ticketService.modifyUserTicket("Frank");  // Non-existent user
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getCode());
+        assertEquals("E-03", response.getMessage());
+        assertEquals("Please enter valid user name", response.getResponse());
+    }
 }

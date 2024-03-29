@@ -5,15 +5,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Objects;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
-    private String firstName;
-    private String lastName;
-    private String email;
+    public String firstName;
+    public String lastName;
+    public String email;
     public User(String firstName) {
         this.firstName = firstName;
     }
+
 }
